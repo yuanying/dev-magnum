@@ -3,6 +3,8 @@
 ## Devstack
 
 I'm using vagrant (parallels on Mac) to boot a devstack.
+In this time, [heat-template](https://github.com/larsks/heat-kubernetes) only supports Juno version of OpenStack.
+Latest version is not worked.
 
     $ sudo apt-get update && sudo apt-get install -y vim git libmysqlclient-dev
     $ cd /vagrant
