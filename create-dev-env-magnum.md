@@ -1,12 +1,68 @@
 # Develop Magnum with Devstack
 
-## Devstack
+## Vagrant
 
 I'm using vagrant (parallels on Mac) to boot a devstack.
+Vagrantfile is below.
+
+    # -*- mode: ruby -*-
+    # vi: set ft=ruby :
+
+    VAGRANTFILE_API_VERSION = "2"
+    Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+      config.vm.box     = "parallels/ubuntu-14.04"
+      config.vm.network "private_network", ip: "192.168.34.56"
+      config.vm.network "public_network", auto_config: false
+
+      config.vm.provider "parallels" do |v|
+        v.customize ["set", :id, "--nested-virt", "on"]
+        v.memory  = 8192
+        v.cpus    = 1
+      end
+    end
+
+and vagrant up.
+
+## Inside Devstack VM
+
+### Install requirement packages
+
+    $ sudo apt-get update
+    $ sudo apt-get install -y vim git libmysqlclient-dev openvswitch-switch
+
+And install kubernetes client.
+
+    $ curl -O -L https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v0.8.0/kubernetes.tar.gz
+    $ tar zxvf kubernetes.tar.gz
+    $ cd kubernetes/platforms/linux/amd64/
+    $ sudo cp -rp ./* /usr/local/bin/
+
+### Network settings
+
+Add this to /etc/network/interfaces
+
+    auto eth2
+    iface eth2 inet manual
+            up ifconfig $IFACE 0.0.0.0 up
+            up ip link set $IFACE promisc on
+            down ip link set $IFACE promisc off
+            down ifconfig $IFACE 0.0.0.0 down
+
+And create br-ex before devstack is created.
+
+    $ sudo ifup eth2
+    $ sudo ovs-vsctl add-br br-ex
+    $ sudo ovs-vsctl add-port br-ex eth2
+    $ sudo ovs-vsctl add-port br-ex p0
+    $ sudo ovs-vsctl set interface p0 type=internal
+    $ sudo ifconfig p0 192.168.11.139
+
+### Install DevStack
+
 In this time, [heat-template](https://github.com/larsks/heat-kubernetes) only supports Juno version of OpenStack.
 Latest version is not worked.
 
-    $ sudo apt-get update && sudo apt-get install -y vim git libmysqlclient-dev
     $ cd /vagrant
     $ git clone https://git.openstack.org/openstack-dev/devstack
     $ cd devstack
@@ -15,12 +71,15 @@ Latest version is not worked.
 
 localrc is below.
 
-    HOST_IP=192.168.34.56
+    HOST_IP=192.168.11.139
 
     FLOATING_RANGE=192.168.11.0/24
-    Q_FLOATING_ALLOCATION_POOL="start=192.168.11.133,end=192.168.11.139"
+    Q_FLOATING_ALLOCATION_POOL="start=192.168.11.133,end=192.168.11.138"
     PUBLIC_NETWORK_GATEWAY=192.168.11.1
 
+    Q_USE_SECGROUP=True
+    ENABLE_TENANT_VLANS=True
+    TENANT_VLAN_RANGE=1000:1999
     PHYSICAL_NETWORK=default
     OVS_PHYSICAL_BRIDGE=br-ex
 
@@ -55,6 +114,11 @@ localrc is below.
     DEST=/opt/stack
     SCREEN_LOGDIR=$DEST/logs/screen
 
+And local.sh is below
+
+    sudo ifconfig br-ex 0.0.0.0
+    # /bin/bash
+
 ## Magnum
 
 ### Install
@@ -88,7 +152,7 @@ magnum.conf has below content.
     verbose = True
 
     rabbit_password = stackqueue
-    rabbit_hosts = 192.168.34.56
+    rabbit_hosts = 192.168.11.139
     rpc_backend = rabbit
 
     [database]
@@ -98,29 +162,23 @@ magnum.conf has below content.
     admin_password = openstack
     admin_user = nova
     admin_tenant_name = service
-    identity_uri = http://192.168.34.56:35357
+    identity_uri = http://192.168.11.139:35357
 
-    auth_uri=http://192.168.34.56:5000/v2.0
+    auth_uri=http://192.168.11.139:5000/v2.0
     auth_protocol = http
     auth_port = 35357
-    auth_host = 192.168.34.56
+    auth_host = 192.168.11.139
 
 #### register magnum service to keystone
 
     $ source /vagrant/devstack/openrc admin admin
-    $ keystone service-create --name=magnum \
+    $ keystone service-create --name=container \
                             --type=container \
                             --description="Magnum Container Service"
     $ keystone endpoint-create --service=container \
                              --publicurl=http://127.0.0.1:9511/v1 \
                              --internalurl=http://127.0.0.1:9511/v1 \
                              --adminurl=http://127.0.0.1:9511/v1
-
-#### Add default keypair
-
-    $ ssh-keygen
-    $ source /vagrant/devstack/openrc demo demo
-    $ nova keypair-add --pub-key ~/.ssh/id_rsa.pub default
 
 #### Register Image to glance
 
@@ -133,6 +191,12 @@ magnum.conf has below content.
         --is-public True \
         --name fedora-21-atomic \
         --file /vagrant/fedora-21-atomic.qcow2
+
+#### Add default keypair to demo user
+
+    $ ssh-keygen
+    $ source /vagrant/devstack/openrc demo demo
+    $ nova keypair-add --pub-key ~/.ssh/id_rsa.pub default
 
 #### Database
 
@@ -171,7 +235,7 @@ and create tables.
 
 ## Test magnum
 
-try to create bay.
+### Try to create bay
 
     $ magnum baymodel-create --name default --keypair_id default \
       --external_network_id ef5e00ba-dd2a-49db-b6c2-8c3aceb83829 \
@@ -179,3 +243,8 @@ try to create bay.
       --flavor_id m1.small
 
     $ magnum bay-create --name kube --baymodel_id ae8fd2a5-6076-4b36-a545-61c15ee43677
+
+### Try to create pod
+
+    $ magnum pod-create --bay-id 99cab72f-16a7-4564-8d73-d4497f51f557 \
+        --pod-file redis-master.json
