@@ -17,7 +17,7 @@ Vagrantfile is below.
 
       config.vm.provider "virtualbox" do |v, override|
         override.vm.box = "ubuntu/trusty64"
-        v.customize ["modifyvm", :id, "--memory", "4096"]
+        v.customize ["modifyvm", :id, "--memory", "8192"]
       end
 
       config.vm.provider "parallels" do |v|
