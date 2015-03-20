@@ -177,10 +177,10 @@ magnum.conf has below content.
 #### register magnum service to keystone
 
     $ source /vagrant/devstack/openrc admin admin
-    $ keystone service-create --name=container \
+    $ keystone service-create --name=magnum \
                             --type=container \
                             --description="Magnum Container Service"
-    $ keystone endpoint-create --service=container \
+    $ keystone endpoint-create --service=magnum \
                              --publicurl=http://127.0.0.1:9511/v1 \
                              --internalurl=http://127.0.0.1:9511/v1 \
                              --adminurl=http://127.0.0.1:9511/v1
@@ -242,12 +242,13 @@ and create tables.
 
 ### Try to create bay
 
-    $ magnum baymodel-create --name default --keypair_id default \
-      --external_network_id ef5e00ba-dd2a-49db-b6c2-8c3aceb83829 \
-      --image_id fedora-21-atomic \
-      --flavor_id m1.small
+    $ NIC_ID=$(neutron net-show public | awk '/ id /{print $4}')
+    $ magnum baymodel-create --name default --keypair-id default \
+      --external-network_id $NIC_ID \
+      --image-id fedora-21-atomic \
+      --flavor-id m1.small
 
-    $ magnum bay-create --name kube --baymodel_id ae8fd2a5-6076-4b36-a545-61c15ee43677
+    $ magnum bay-create --name k8s --baymodel-id default
 
 ### Try to create pod
 
