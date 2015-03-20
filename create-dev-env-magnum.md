@@ -1,4 +1,5 @@
-# Develop Magnum with Devstack
+Develop Magnum with Devstack
+============================
 
 ## Vagrant
 
