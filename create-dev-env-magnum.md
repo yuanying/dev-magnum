@@ -245,7 +245,7 @@ and create tables.
 
     $ NIC_ID=$(neutron net-show public | awk '/ id /{print $4}')
     $ magnum baymodel-create --name default --keypair-id default \
-      --external-network_id $NIC_ID \
+      --external-network-id $NIC_ID \
       --image-id fedora-21-atomic \
       --flavor-id m1.small --docker-volume-size 5
 
