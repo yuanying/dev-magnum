@@ -158,7 +158,7 @@ magnum.conf has below content.
     verbose = True
 
     rabbit_password = stackqueue
-    rabbit_hosts = 192.168.11.139
+    rabbit_hosts = 127.0.0.1
     rpc_backend = rabbit
 
     [database]
@@ -168,12 +168,12 @@ magnum.conf has below content.
     admin_password = openstack
     admin_user = nova
     admin_tenant_name = service
-    identity_uri = http://192.168.11.139:35357
+    identity_uri = http://127.0.0.1:35357
 
-    auth_uri=http://192.168.11.139:5000/v2.0
+    auth_uri=http://127.0.0.1:5000/v2.0
     auth_protocol = http
     auth_port = 35357
-    auth_host = 192.168.11.139
+    auth_host = 127.0.0.1
 
 #### register magnum service to keystone
 
