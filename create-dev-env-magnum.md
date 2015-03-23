@@ -247,7 +247,7 @@ and create tables.
     $ magnum baymodel-create --name default --keypair-id default \
       --external-network_id $NIC_ID \
       --image-id fedora-21-atomic \
-      --flavor-id m1.small
+      --flavor-id m1.small --docker-volume-size 5
 
     $ magnum bay-create --name k8s --baymodel-id default
 
