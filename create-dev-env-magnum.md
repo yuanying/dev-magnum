@@ -139,6 +139,7 @@ magnum.conf has below content.
     debug = True
     verbose = True
 
+    rabbit_userid=stackrabbit
     rabbit_password = stackqueue
     rabbit_hosts = 127.0.0.1
     rpc_backend = rabbit
