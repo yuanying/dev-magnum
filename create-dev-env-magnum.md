@@ -172,14 +172,14 @@ magnum.conf has below content.
 #### Register Image to glance
 
     $ cd /vagrant
-    $ curl -O https://fedorapeople.org/groups/heat/kolla/fedora-21-atomic.qcow2
+    $ curl -O https://fedorapeople.org/groups/heat/kolla/fedora-21-atomic-2.qcow2
     $ source /vagrant/devstack/openrc admin admin
     $ glance image-create \
         --disk-format qcow2 \
         --container-format bare \
         --is-public True \
         --name fedora-21-atomic \
-        --file /vagrant/fedora-21-atomic.qcow2
+        --file /vagrant/fedora-21-atomic-2.qcow2
 
 #### Add default keypair to demo user
 
