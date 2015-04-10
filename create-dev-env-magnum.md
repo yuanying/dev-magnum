@@ -107,6 +107,11 @@ localrc is below.
     enable_service q-meta
     enable_service neutron
 
+    enable_service h-eng
+    enable_service h-api
+    enable_service h-api-cfn
+    enable_service h-api-cw
+
     NOVA_BRANCH=stable/juno
     GLANCE_BRANCH=stable/juno
     KEYSTONE_BRANCH=stable/juno
