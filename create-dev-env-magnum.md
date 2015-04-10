@@ -5,28 +5,28 @@ Develop Magnum with Devstack
 
 I'm using vagrant (parallels on Mac) to boot a devstack.
 Vagrantfile is below.
-ke
-    # -*- mode: ruby -*-
-    # vi: set ft=ruby :
 
-    VAGRANTFILE_API_VERSION = "2"
-    Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    Vagrant.configure('2') do |config|
+      config.vm.box = "trusty64"
 
-      config.vm.box     = "parallels/ubuntu-14.04"
-      config.vm.network "private_network", ip: "192.168.34.56"
-      config.vm.network "public_network", auto_config: false
+      config.vm.define :devstack do |devstack|
+        devstack.vm.hostname = "devstack"
+        devstack.vm.network :private_network, ip: "192.168.123.10"
+        devstack.vm.network :public_network, dev: 'br0', mode: 'bridge', ip: "192.168.11.197"
 
-      config.vm.provider "virtualbox" do |v, override|
-        override.vm.box = "ubuntu/trusty64"
-        v.customize ["modifyvm", :id, "--memory", "8192"]
+        devstack.vm.synced_folder ".", "/vagrant", type: "nfs"
+        #devstack.vm.synced_folder "/home/yuanying/Projects", "/home/yuanying/Projects", type: "nfs"
+
+        devstack.vm.provider :libvirt do |libvirt, override|
+          libvirt.memory = 8192
+          libvirt.nested = true
+        end
+
+        devstack.vm.provision "shell", path: "./install.sh"
       end
 
-      config.vm.provider "parallels" do |v|
-        v.customize ["set", :id, "--nested-virt", "on"]
-        v.memory  = 8192
-        v.cpus    = 1
-      end
     end
+
 
 and vagrant up.
 
@@ -46,42 +46,28 @@ And install kubernetes client.
 
 ### Network settings
 
-Add this to /etc/network/interfaces
-
-    auto eth2
-    iface eth2 inet manual
-            up ifconfig $IFACE 0.0.0.0 up
-            up ip link set $IFACE promisc on
-            down ip link set $IFACE promisc off
-            down ifconfig $IFACE 0.0.0.0 down
-
-And create br-ex before devstack is created.
-
-    $ sudo ifup eth2
-    $ sudo ovs-vsctl add-br br-ex
-    $ sudo ovs-vsctl add-port br-ex eth2
-    $ sudo ovs-vsctl add-port br-ex p0
-    $ sudo ovs-vsctl set interface p0 type=internal
-    $ sudo ifconfig p0 192.168.11.139
+    sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    sudo /sbin/iptables-save -c | sudo tee -a /etc/iptables.rule
+    cat << _EOT_ | sudo tee -a /etc/network/if-pre-up.d/iptables_start
+    #!/bin/sh
+    /sbin/iptables-restore < /etc/iptables.rules
+    exit 0
+    _EOT_
+    sudo chmod +x /etc/network/if-pre-up.d/iptables_start
 
 ### Install DevStack
-
-In this time, [heat-template](https://github.com/larsks/heat-kubernetes) only supports Juno version of OpenStack.
-Latest version is not worked.
 
     $ cd /vagrant
     $ git clone https://git.openstack.org/openstack-dev/devstack
     $ cd devstack
-    $ git checkout -b stable/juno origin/stable/juno
     $ ./stack.sh
 
 localrc is below.
 
-    HOST_IP=192.168.11.139
 
-    FLOATING_RANGE=192.168.11.0/24
-    Q_FLOATING_ALLOCATION_POOL="start=192.168.11.133,end=192.168.11.138"
-    PUBLIC_NETWORK_GATEWAY=192.168.11.1
+    FLOATING_RANGE=192.168.19.0/24
+    Q_FLOATING_ALLOCATION_POOL="start=192.168.19.80,end=192.168.19.100"
+    PUBLIC_NETWORK_GATEWAY=192.168.19.1
 
     Q_USE_SECGROUP=True
     ENABLE_TENANT_VLANS=True
@@ -111,15 +97,6 @@ localrc is below.
     enable_service h-api
     enable_service h-api-cfn
     enable_service h-api-cw
-
-    NOVA_BRANCH=stable/juno
-    GLANCE_BRANCH=stable/juno
-    KEYSTONE_BRANCH=stable/juno
-    HORIZON_BRANCH=stable/juno
-    CINDER_BRANCH=stable/juno
-    NEUTRON_BRANCH=stable/juno
-    CEILOMETER_BRANCH=stable/juno
-    HEAT_BRANCH=stable/juno
 
     LOGFILE=$DEST/logs/devstack.log
     DEST=/opt/stack
