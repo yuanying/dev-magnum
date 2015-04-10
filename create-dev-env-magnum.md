@@ -5,7 +5,7 @@ Develop Magnum with Devstack
 
 I'm using vagrant (parallels on Mac) to boot a devstack.
 Vagrantfile is below.
-
+ke
     # -*- mode: ruby -*-
     # vi: set ft=ruby :
 
@@ -185,6 +185,7 @@ magnum.conf has below content.
                              --publicurl=http://127.0.0.1:9511/v1 \
                              --internalurl=http://127.0.0.1:9511/v1 \
                              --adminurl=http://127.0.0.1:9511/v1
+                             --region RegionOne
 
 #### Register Image to glance
 
