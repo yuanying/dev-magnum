@@ -37,13 +37,6 @@ and vagrant up.
     $ sudo apt-get update
     $ sudo apt-get install -y vim git libmysqlclient-dev openvswitch-switch
 
-And install kubernetes client.
-
-    $ curl -O -L https://github.com/GoogleCloudPlatform/kubernetes/releases/download/v0.8.0/kubernetes.tar.gz
-    $ tar zxvf kubernetes.tar.gz
-    $ cd kubernetes/platforms/linux/amd64/
-    $ sudo cp -rp ./* /usr/local/bin/
-
 ### Network settings
 
     sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
@@ -102,11 +95,6 @@ localrc is below.
     DEST=/opt/stack
     SCREEN_LOGDIR=$DEST/logs/screen
 
-And local.sh is below
-
-    sudo ifconfig br-ex 0.0.0.0
-    # /bin/bash
-
 ## Magnum
 
 ### Install
@@ -127,11 +115,9 @@ And local.sh is below
 
 ### Configuration
 
-    $ sudo mkdir -p /etc/magnum/templates
-    $ cd /etc/magnum/templates
-    $ sudo git clone https://github.com/larsks/heat-kubernetes.git
+    $ sudo mkdir -p /etc/magnum
     $ cd /etc/magnum
-    $ vim magnum.conf
+    $ sudo vim magnum.conf
 
 magnum.conf has below content.
 
@@ -139,6 +125,7 @@ magnum.conf has below content.
     debug = True
     verbose = True
 
+    rabbit_userid=stackrabbit
     rabbit_password = stackqueue
     rabbit_hosts = 127.0.0.1
     rpc_backend = rabbit
@@ -166,20 +153,21 @@ magnum.conf has below content.
     $ keystone endpoint-create --service=magnum \
                              --publicurl=http://127.0.0.1:9511/v1 \
                              --internalurl=http://127.0.0.1:9511/v1 \
-                             --adminurl=http://127.0.0.1:9511/v1
+                             --adminurl=http://127.0.0.1:9511/v1 \
                              --region RegionOne
 
 #### Register Image to glance
 
     $ cd /vagrant
-    $ curl -O https://fedorapeople.org/groups/heat/kolla/fedora-21-atomic-2.qcow2
+    $ curl -O https://fedorapeople.org/groups/heat/kolla/fedora-21-atomic-3.qcow2
     $ source /vagrant/devstack/openrc admin admin
     $ glance image-create \
         --disk-format qcow2 \
         --container-format bare \
         --is-public True \
         --name fedora-21-atomic \
-        --file /vagrant/fedora-21-atomic-2.qcow2
+        --property os-distro='fedora-atomic' \
+        --file /vagrant/fedora-21-atomic-3.qcow2
 
 #### Add default keypair to demo user
 
@@ -227,14 +215,23 @@ and create tables.
 ### Try to create bay
 
     $ NIC_ID=$(neutron net-show public | awk '/ id /{print $4}')
-    $ magnum baymodel-create --name default --keypair-id default \
+    $ magnum baymodel-create --name kubernetes --keypair-id default \
       --external-network-id $NIC_ID \
       --image-id fedora-21-atomic \
-      --flavor-id m1.small --docker-volume-size 5
+      --flavor-id m1.small --docker-volume-size 1 \
+      --coe kubernetes
 
-    $ magnum bay-create --name k8s --baymodel-id default
+    $ magnum bay-create --name k8s_bay --baymodel kubernetes
 
 ### Try to create pod
 
     $ magnum pod-create --bay-id 99cab72f-16a7-4564-8d73-d4497f51f557 \
         --pod-file redis-master.json
+
+
+## After reload
+
+    $ sudo ip addr add 192.168.19.1/24 dev br-ex
+    $ sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    $ sudo losetup /dev/loop0 /opt/stack/data/stack-volumes-default-backing-file ;
+    $ sudo losetup /dev/loop1 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file ;
