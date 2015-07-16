@@ -35,24 +35,17 @@ and vagrant up.
 ### Install requirement packages
 
     $ sudo apt-get update
-    $ sudo apt-get install -y vim git libmysqlclient-dev openvswitch-switch
+    $ sudo apt-get install libffi-dev libssl-dev git vim \
+                           libxml2-dev libsqlite3-dev libxslt1-dev -y
 
 ### Network settings
 
     sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-    sudo /sbin/iptables-save -c | sudo tee -a /etc/iptables.rule
-    cat << _EOT_ | sudo tee -a /etc/network/if-pre-up.d/iptables_start
-    #!/bin/sh
-    /sbin/iptables-restore < /etc/iptables.rules
-    exit 0
-    _EOT_
-    sudo chmod +x /etc/network/if-pre-up.d/iptables_start
 
 ### Install DevStack
 
     $ cd /vagrant
     $ git clone https://git.openstack.org/openstack-dev/devstack
-    $ cd devstack
     $ ./stack.sh
 
 localrc is below.
@@ -90,6 +83,8 @@ localrc is below.
     enable_service h-api
     enable_service h-api-cfn
     enable_service h-api-cw
+
+    #enable_service key barbican barbican-dogtag
 
     LOGFILE=$DEST/logs/devstack.log
     DEST=/opt/stack
@@ -216,7 +211,7 @@ and create tables.
 
     $ NIC_ID=$(neutron net-show public | awk '/ id /{print $4}')
     $ magnum baymodel-create --name kubernetes --keypair-id default \
-      --external-network-id $NIC_ID \
+      --external-network public \
       --image-id fedora-21-atomic \
       --flavor-id m1.small --docker-volume-size 1 \
       --coe kubernetes
