@@ -77,6 +77,7 @@ localrc is below.
     enable_service q-dhcp
     enable_service q-l3
     enable_service q-meta
+    enable_service q-lbaas
     enable_service neutron
 
     enable_service h-eng
@@ -209,7 +210,6 @@ and create tables.
 
 ### Try to create bay
 
-    $ NIC_ID=$(neutron net-show public | awk '/ id /{print $4}')
     $ magnum baymodel-create --name kubernetes --keypair-id default \
       --external-network public \
       --image-id fedora-21-atomic \
