@@ -85,7 +85,8 @@ localrc is below.
     enable_service h-api-cfn
     enable_service h-api-cw
 
-    #enable_service key barbican barbican-dogtag
+    enable_service barbican-svc
+    enable_service barbican-retry
 
     LOGFILE=$DEST/logs/devstack.log
     DEST=/opt/stack
@@ -161,7 +162,7 @@ magnum.conf has below content.
         --disk-format qcow2 \
         --container-format bare \
         --is-public True \
-        --name fedora-21-atomic \
+        --name fedora-21-atomic-3 \
         --property os-distro='fedora-atomic' \
         --file /vagrant/fedora-21-atomic-3.qcow2
 
@@ -212,7 +213,7 @@ and create tables.
 
     $ magnum baymodel-create --name kubernetes --keypair-id default \
       --external-network public \
-      --image-id fedora-21-atomic \
+      --image-id fedora-21-atomic-3 \
       --flavor-id m1.small --docker-volume-size 1 \
       --coe kubernetes
 
