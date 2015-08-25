@@ -44,8 +44,12 @@ and vagrant up.
 
 ### Install DevStack
 
-    $ cd /vagrant
+    $ cd ~
     $ git clone https://git.openstack.org/openstack-dev/devstack
+    $ git clone https://git.openstack.org/openstack/barbican
+    $ cp barbican/contrib/devstack/lib/* devstack/lib/
+    $ cp barbican/contrib/devstack/extras.d/* devstack/extras.d/
+    $ cd devstack
     $ ./stack.sh
 
 localrc is below.
@@ -85,8 +89,7 @@ localrc is below.
     enable_service h-api-cfn
     enable_service h-api-cw
 
-    enable_service barbican-svc
-    enable_service barbican-retry
+    enable_service barbican
 
     LOGFILE=$DEST/logs/devstack.log
     DEST=/opt/stack
@@ -98,15 +101,15 @@ localrc is below.
 
 #### Magnum Server
 
-    $ cd /vagrant
-    $ git clone https://github.com/stackforge/magnum.git
+    $ cd ~
+    $ git clone https://github.com/openstack/magnum.git
     $ cd magnum
     $ tox -evenv -- echo 'done'
 
 #### Magnum Client
 
-    $ cd /vagrant
-    $ git clone https://github.com/stackforge/python-magnumclient.git
+    $ cd ~
+    $ git clone https://github.com/openstack/python-magnumclient.git
     $ cd python-magnumclient
     $ tox -evenv -- echo 'done'
 
@@ -143,33 +146,33 @@ magnum.conf has below content.
 
 #### register magnum service to keystone
 
-    $ source /vagrant/devstack/openrc admin admin
+    $ source ~/devstack/openrc admin admin
     $ keystone service-create --name=magnum \
                             --type=container \
                             --description="Magnum Container Service"
     $ keystone endpoint-create --service=magnum \
-                             --publicurl=http://127.0.0.1:9511/v1 \
-                             --internalurl=http://127.0.0.1:9511/v1 \
-                             --adminurl=http://127.0.0.1:9511/v1 \
+                             --publicurl=http://192.168.11.132:9511/v1 \
+                             --internalurl=http://192.168.11.132:9511/v1 \
+                             --adminurl=http://192.168.11.132:9511/v1 \
                              --region RegionOne
 
 #### Register Image to glance
 
-    $ cd /vagrant
-    $ curl -O https://fedorapeople.org/groups/heat/kolla/fedora-21-atomic-3.qcow2
-    $ source /vagrant/devstack/openrc admin admin
+    $ cd ~
+    $ curl -O https://fedorapeople.org/groups/magnum/fedora-21-atomic-3.qcow2
+    $ source ~/devstack/openrc admin admin
     $ glance image-create \
         --disk-format qcow2 \
         --container-format bare \
         --is-public True \
         --name fedora-21-atomic-3 \
         --property os-distro='fedora-atomic' \
-        --file /vagrant/fedora-21-atomic-3.qcow2
+        --file ~/fedora-21-atomic-3.qcow2
 
 #### Add default keypair to demo user
 
     $ ssh-keygen
-    $ source /vagrant/devstack/openrc demo demo
+    $ source ~/devstack/openrc demo demo
     $ nova keypair-add --pub-key ~/.ssh/id_rsa.pub default
 
 #### Database
@@ -182,7 +185,7 @@ magnum.conf has below content.
 
 and create tables.
 
-    $ cd /vagrant/magnum
+    $ cd ~/magnum
     $ source .tox/venv/bin/activate
     $ pip install mysql-python
     $ magnum-db-manage upgrade
@@ -191,19 +194,19 @@ and create tables.
 
 #### magnum-api
 
-    $ cd /vagrant/magnum
+    $ cd ~/magnum
     $ source .tox/venv/bin/activate
     $ magnum-api
 
 #### magnum-conductor
 
-    $ cd /vagrant/magnum
+    $ cd ~/magnum
     $ source .tox/venv/bin/activate
     $ magnum-conductor
 
 #### python-magnumclient
 
-    $ cd /vagrant/python-magnumclient
+    $ cd ~/python-magnumclient
     $ source .tox/venv/bin/activate
     $ magnum bay-list
 
