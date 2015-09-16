@@ -46,9 +46,6 @@ and vagrant up.
 
     $ cd ~
     $ git clone https://git.openstack.org/openstack-dev/devstack
-    $ git clone https://git.openstack.org/openstack/barbican
-    $ cp barbican/contrib/devstack/lib/* devstack/lib/
-    $ cp barbican/contrib/devstack/extras.d/* devstack/extras.d/
     $ cd devstack
     $ ./stack.sh
 
@@ -89,7 +86,7 @@ localrc is below.
     enable_service h-api-cfn
     enable_service h-api-cw
 
-    enable_service barbican
+    enable_plugin barbican https://git.openstack.org/openstack/barbican
 
     LOGFILE=$DEST/logs/devstack.log
     DEST=/opt/stack
@@ -215,12 +212,20 @@ and create tables.
 ### Try to create bay
 
     $ magnum baymodel-create --name kubernetes --keypair-id default \
-      --external-network public \
+      --external-network-id public \
       --image-id fedora-21-atomic-3 \
       --flavor-id m1.small --docker-volume-size 1 \
       --coe kubernetes
 
     $ magnum bay-create --name k8s_bay --baymodel kubernetes
+
+    $ magnum baymodel-create --name swarm \
+                           --image-id fedora-21-atomic-3 \
+                           --keypair-id default \
+                           --external-network-id public \
+                           --dns-nameserver 8.8.8.8 \
+                           --flavor-id m1.small \
+                           --coe swarm
 
 ### Try to create pod
 
