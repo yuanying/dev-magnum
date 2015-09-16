@@ -4,7 +4,7 @@ Develop Magnum with Devstack
 ## Vagrant
 
 I'm using vagrant (parallels on Mac) to boot a devstack.
-Vagrantfile is below.
+Vagrantfile is below. Devstack IP Address is 192.168.11.197.
 
     Vagrant.configure('2') do |config|
       config.vm.box = "trusty64"
@@ -96,6 +96,9 @@ localrc is below.
 
 ### Install
 
+Magnum is outside of devstack.
+In this case, magnum will install to 192.168.11.132 host.
+
 #### Magnum Server
 
     $ cd ~
@@ -117,6 +120,7 @@ localrc is below.
     $ sudo vim magnum.conf
 
 magnum.conf has below content.
+Change 192.168.11.197 to your devstack IP address.
 
     [DEFAULT]
     debug = True
@@ -124,22 +128,26 @@ magnum.conf has below content.
 
     rabbit_userid=stackrabbit
     rabbit_password = stackqueue
-    rabbit_hosts = 127.0.0.1
+    rabbit_hosts = 192.168.11.197
     rpc_backend = rabbit
 
     [database]
-    connection = mysql://root:stackdb@localhost/magnum
+    connection = mysql://root:stackdb@192.168.11.197/magnum
 
     [keystone_authtoken]
     admin_password = openstack
     admin_user = nova
     admin_tenant_name = service
-    identity_uri = http://127.0.0.1:35357
+    identity_uri = http://192.168.11.197:35357
+    #user_domain_id = default
+    #project_domain_id = default
 
-    auth_uri=http://127.0.0.1:5000/v2.0
-    auth_protocol = http
-    auth_port = 35357
-    auth_host = 127.0.0.1
+    auth_uri=http://192.168.11.197:5000/v3
+
+    [api]
+
+    host = 0.0.0.0
+
 
 #### register magnum service to keystone
 
@@ -174,7 +182,7 @@ magnum.conf has below content.
 
 #### Database
 
-    $ mysql -h 127.0.0.1 -u root -pstackdb mysql <<EOF
+    $ mysql -h 192.168.11.197 -u root -pstackdb mysql <<EOF
     CREATE DATABASE IF NOT EXISTS magnum DEFAULT CHARACTER SET utf8;
     GRANT ALL PRIVILEGES ON magnum.* TO
         'root'@'%' IDENTIFIED BY 'stackdb'
