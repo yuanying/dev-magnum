@@ -164,15 +164,15 @@ Change 192.168.11.197 to your devstack IP address.
 #### Register Image to glance
 
     $ cd ~
-    $ curl -O https://fedorapeople.org/groups/magnum/fedora-21-atomic-3.qcow2
+    $ curl -O https://fedorapeople.org/groups/magnum/fedora-21-atomic-5.qcow2
     $ source ~/devstack/openrc admin admin
     $ glance image-create \
         --disk-format qcow2 \
         --container-format bare \
         --is-public True \
-        --name fedora-21-atomic-3 \
+        --name fedora-21-atomic-5 \
         --property os-distro='fedora-atomic' \
-        --file ~/fedora-21-atomic-3.qcow2
+        --file ~/fedora-21-atomic-5.qcow2
 
 #### Add default keypair to demo user
 
@@ -221,14 +221,14 @@ and create tables.
 
     $ magnum baymodel-create --name kubernetes --keypair-id default \
       --external-network-id public \
-      --image-id fedora-21-atomic-3 \
+      --image-id fedora-21-atomic-5 \
       --flavor-id m1.small --docker-volume-size 1 \
-      --coe kubernetes
+      --coe kubernetes --network-driver flannel
 
     $ magnum bay-create --name k8s_bay --baymodel kubernetes
 
     $ magnum baymodel-create --name swarm \
-                           --image-id fedora-21-atomic-3 \
+                           --image-id fedora-21-atomic-5 \
                            --keypair-id default \
                            --external-network-id public \
                            --dns-nameserver 8.8.8.8 \
