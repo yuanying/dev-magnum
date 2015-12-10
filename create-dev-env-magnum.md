@@ -48,13 +48,23 @@ and vagrant up.
     $ git clone https://git.openstack.org/openstack-dev/devstack
     $ cd devstack
     $ ./stack.sh
+    $ sudo mkdir /etc/neutron
+    $ chown -R $USER /etc/neutron
+    $ echo "dhcp-option-force=26,1400" >> /etc/neutron/dnsmasq.conf
 
-localrc is below.
+local.conf is below.
 
+    [[local|localrc]]
+    HOST_IP=192.168.11.197
+    #SERVICE_HOST=192.168.202.4
+    #HEAT_API_HOST=${SERVICE_HOST}
+    #HEAT_API_CFN_HOST=${SERVICE_HOST}
+    #HEAT_ENGINE_HOST=${SERVICE_HOST}
+    #HEAT_API_CW_HOST=${SERVICE_HOST}
 
-    FLOATING_RANGE=192.168.19.0/24
-    Q_FLOATING_ALLOCATION_POOL="start=192.168.19.80,end=192.168.19.100"
-    PUBLIC_NETWORK_GATEWAY=192.168.19.1
+    FLOATING_RANGE=172.16.12.0/24
+    Q_FLOATING_ALLOCATION_POOL="start=172.16.12.10,end=172.16.12.200"
+    PUBLIC_NETWORK_GATEWAY=172.16.12.1
 
     Q_USE_SECGROUP=True
     ENABLE_TENANT_VLANS=True
@@ -88,9 +98,13 @@ localrc is below.
 
     enable_plugin barbican https://git.openstack.org/openstack/barbican
 
-    LOGFILE=$DEST/logs/devstack.log
+    #LOGFILE=$DEST/logs/devstack.log
     DEST=/opt/stack
-    SCREEN_LOGDIR=$DEST/logs/screen
+    #SCREEN_LOGDIR=$DEST/logs/screen
+
+    [[post-config|/etc/neutron/dhcp_agent.ini]]
+    [DEFAULT]
+    dnsmasq_config_file = /etc/neutron/dnsmasq.conf
 
 ## Magnum
 
@@ -152,27 +166,24 @@ Change 192.168.11.197 to your devstack IP address.
 #### register magnum service to keystone
 
     $ source ~/devstack/openrc admin admin
-    $ keystone service-create --name=magnum \
-                            --type=container \
-                            --description="Magnum Container Service"
-    $ keystone endpoint-create --service=magnum \
-                             --publicurl=http://192.168.11.132:9511/v1 \
-                             --internalurl=http://192.168.11.132:9511/v1 \
-                             --adminurl=http://192.168.11.132:9511/v1 \
-                             --region RegionOne
+    $ openstack service create --name=magnum \
+                               --description="Magnum Container Service" \
+                               container
+    $ openstack endpoint create --region=RegionOne \
+                                --publicurl=http://192.168.11.132:9511/v1 \
+                                --internalurl=http://192.168.11.132:9511/v1 \
+                                --adminurl=http://192.168.11.132:9511/v1 \
+                                magnum
 
 #### Register Image to glance
 
-    $ cd ~
     $ curl -O https://fedorapeople.org/groups/magnum/fedora-21-atomic-5.qcow2
     $ source ~/devstack/openrc admin admin
-    $ glance image-create \
-        --disk-format qcow2 \
-        --container-format bare \
-        --is-public True \
-        --name fedora-21-atomic-5 \
-        --property os-distro='fedora-atomic' \
-        --file ~/fedora-21-atomic-5.qcow2
+    $ glance image-create --name fedora-21-atomic-5 \
+                        --visibility public \
+                        --disk-format qcow2 \
+                        --os-distro fedora-atomic \
+                        --container-format bare < fedora-21-atomic-5.qcow2
 
 #### Add default keypair to demo user
 
@@ -220,20 +231,22 @@ and create tables.
 ### Try to create bay
 
     $ magnum baymodel-create --name kubernetes --keypair-id default \
-      --external-network-id public \
-      --image-id fedora-21-atomic-5 \
-      --flavor-id m1.small --docker-volume-size 1 \
-      --coe kubernetes --network-driver flannel
+                             --external-network-id public \
+                             --image-id fedora-21-atomic-5 \
+                             --flavor-id m1.small \
+                             --docker-volume-size 1 \
+                             --network-driver flannel
+                             --coe kubernetes
 
     $ magnum bay-create --name k8s_bay --baymodel kubernetes
 
     $ magnum baymodel-create --name swarm \
-                           --image-id fedora-21-atomic-5 \
-                           --keypair-id default \
-                           --external-network-id public \
-                           --dns-nameserver 8.8.8.8 \
-                           --flavor-id m1.small \
-                           --coe swarm
+                             --image-id fedora-21-atomic-5 \
+                             --keypair-id default \
+                             --external-network-id public \
+                             --flavor-id m1.small \
+                             --docker-volume-size 1 \
+                             --coe swarm
 
 ### Try to create pod
 
@@ -243,7 +256,7 @@ and create tables.
 
 ## After reload
 
-    $ sudo ip addr add 192.168.19.1/24 dev br-ex
+    $ sudo ip addr add 172.16.12.1/24 dev br-ex
     $ sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
     $ sudo losetup /dev/loop0 /opt/stack/data/stack-volumes-default-backing-file ;
     $ sudo losetup /dev/loop1 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file ;
