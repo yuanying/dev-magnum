@@ -45,12 +45,12 @@ and vagrant up.
 ### Install DevStack
 
     $ cd ~
+    $ sudo mkdir - p /etc/neutron
+    $ sudo chown -R $USER /etc/neutron
+    $ echo "dhcp-option-force=26,1400" >> /etc/neutron/dnsmasq.conf
     $ git clone https://git.openstack.org/openstack-dev/devstack
     $ cd devstack
     $ ./stack.sh
-    $ sudo mkdir /etc/neutron
-    $ chown -R $USER /etc/neutron
-    $ echo "dhcp-option-force=26,1400" >> /etc/neutron/dnsmasq.conf
 
 local.conf is below.
 
@@ -129,6 +129,26 @@ In this case, magnum will install to 192.168.11.132 host.
 
 ### Configuration
 
+#### Setup trust
+
+    TRUSTEE_DOMAIN_ID=$(
+        openstack domain create magnum \
+            --description "Owns users and projects created by magnum" \
+            -f value -c id
+    )
+    TRUSTEE_DOMAIN_ADMIN_ID=$(
+        openstack user create trustee_domain_admin \
+            --password "password" \
+            --domain=${TRUSTEE_DOMAIN_ID} \
+            --or-show \
+            -f value -c id
+    )
+    openstack --os-identity-api-version 3 role add \
+              --user $TRUSTEE_DOMAIN_ADMIN_ID --domain $TRUSTEE_DOMAIN_ID \
+              admin
+
+#### Create config
+
     $ sudo mkdir -p /etc/magnum
     $ cd /etc/magnum
     $ sudo vim magnum.conf
@@ -162,6 +182,28 @@ Change 192.168.11.197 to your devstack IP address.
 
     host = 0.0.0.0
 
+    [trust]
+    #trustee_domain_id = magnum
+    #trustee_domain_admin_id = trustee_domain_admin
+    trustee_domain_admin_password = password
+
+Update trust config
+
+    # set trustee domain id
+    sudo sed -i "s/#trustee_domain_id\s*=.*/trustee_domain_id=${TRUSTEE_DOMAIN_ID}/" \
+             /etc/magnum/magnum.conf
+
+    # set trustee domain admin id
+    sudo sed -i "s/#trustee_domain_admin_id\s*=.*/trustee_domain_admin_id=${TRUSTEE_DOMAIN_ADMIN_ID}/" \
+             /etc/magnum/magnum.conf
+
+    # set trustee domain admin password
+    sudo sed -i "s/#trustee_domain_admin_password\s*=.*/trustee_domain_admin_password=password/" \
+             /etc/magnum/magnum.conf
+
+    # set correct region name to clients
+    sudo sed -i "s/#region_name\s*=.*/region_name=RegionOne/" \
+             /etc/magnum/magnum.conf
 
 #### register magnum service to keystone
 
@@ -170,10 +212,12 @@ Change 192.168.11.197 to your devstack IP address.
                                --description="Magnum Container Service" \
                                container
     $ openstack endpoint create --region=RegionOne \
-                                --publicurl=http://192.168.11.132:9511/v1 \
-                                --internalurl=http://192.168.11.132:9511/v1 \
-                                --adminurl=http://192.168.11.132:9511/v1 \
-                                magnum
+                                magnum public http://192.168.11.132:9511/v1
+    $ openstack endpoint create --region=RegionOne \
+                                magnum internal http://192.168.11.132:9511/v1
+    $ openstack endpoint create --region=RegionOne \
+                                magnum admin http://192.168.11.132:9511/v1
+
 
 #### Register Image to glance
 
@@ -235,7 +279,7 @@ and create tables.
                              --image-id fedora-21-atomic-5 \
                              --flavor-id m1.small \
                              --docker-volume-size 1 \
-                             --network-driver flannel
+                             --network-driver flannel \
                              --coe kubernetes
 
     $ magnum bay-create --name k8s_bay --baymodel kubernetes
@@ -256,6 +300,7 @@ and create tables.
 
 ## After reload
 
+    $ sudo ip addr add 10.0.0.1/24 dev br-ex
     $ sudo ip addr add 172.16.12.1/24 dev br-ex
     $ sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
     $ sudo losetup /dev/loop0 /opt/stack/data/stack-volumes-default-backing-file ;

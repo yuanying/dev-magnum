@@ -77,13 +77,26 @@
     apiVersion: v1
     kind: Pod
     metadata:
-     name: nginx
+      name: nginx
+
     spec:
-     containers:
-       - name: nginx
-         image: nginx
-         ports:
-           - containerPort: 80
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+          - containerPort: 80
+    END
+
+    cat > nginx-service.yml << END
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: nginx-service
+    spec:
+      ports:
+        - port: 80
+      selector:
+        app: nginx
     END
 
     kubectl create -f nginx.yml
