@@ -1,42 +1,43 @@
 Develop Magnum with Devstack
 ============================
 
-## Vagrant
+## Devstack VM HOST
 
-I'm using vagrant (parallels on Mac) to boot a devstack.
-Vagrantfile is below. Devstack IP Address is 192.168.11.197.
+### network interface
 
-    Vagrant.configure('2') do |config|
-      config.vm.box = "trusty64"
+    # This file describes the network interfaces available on your system
+    # and how to activate them. For more information, see interfaces(5).
 
-      config.vm.define :devstack do |devstack|
-        devstack.vm.hostname = "devstack"
-        devstack.vm.network :private_network, ip: "192.168.123.10"
-        devstack.vm.network :public_network, dev: 'br0', mode: 'bridge', ip: "192.168.11.197"
+    # The loopback network interface
+    auto lo
+    iface lo inet loopback
 
-        devstack.vm.synced_folder ".", "/vagrant", type: "nfs"
-        #devstack.vm.synced_folder "/home/yuanying/Projects", "/home/yuanying/Projects", type: "nfs"
+    # The primary network interface
+    auto em1
+    iface em1 inet manual
+      up ip link set $IFACE up
+      up ip link set $IFACE promisc on
+      down ip link set $IFACE promisc off
+      down ip link set $IFACE down
 
-        devstack.vm.provider :libvirt do |libvirt, override|
-          libvirt.memory = 8192
-          libvirt.nested = true
-        end
+    auto br0
+    iface br0 inet static
+      address 192.168.11.196
+      netmask 255.255.255.0
+      gateway 192.168.11.1
+      dns-nameservers 8.8.8.8
+      bridge_ports em1
+      bridge_stp off
+      bridge_fd 0
+      bridge_maxwait 0
 
-        devstack.vm.provision "shell", path: "./install.sh"
-      end
+### uvt-kvm
 
-    end
+    $ uvt-kvm create devstack release=trusty \
+              --bridge br0 --cpu 2 --memory 24576 --disk 200 \
+              --user-data ~/init-devstack.cfg
 
-
-and vagrant up.
-
-## Inside Devstack VM
-
-### Install requirement packages
-
-    $ sudo apt-get update
-    $ sudo apt-get install libffi-dev libssl-dev git vim \
-                           libxml2-dev libsqlite3-dev libxslt1-dev -y
+## Inside VM
 
 ### Network settings
 
@@ -56,25 +57,13 @@ local.conf is below.
 
     [[local|localrc]]
     HOST_IP=192.168.11.197
-    #SERVICE_HOST=192.168.202.4
-    #HEAT_API_HOST=${SERVICE_HOST}
-    #HEAT_API_CFN_HOST=${SERVICE_HOST}
-    #HEAT_ENGINE_HOST=${SERVICE_HOST}
-    #HEAT_API_CW_HOST=${SERVICE_HOST}
 
     FLOATING_RANGE=172.16.12.0/24
-    Q_FLOATING_ALLOCATION_POOL="start=172.16.12.10,end=172.16.12.200"
     PUBLIC_NETWORK_GATEWAY=172.16.12.1
-
-    Q_USE_SECGROUP=True
     ENABLE_TENANT_VLANS=True
     TENANT_VLAN_RANGE=1000:1999
-    PHYSICAL_NETWORK=default
+    PHYSICAL_NETWORK=public
     OVS_PHYSICAL_BRIDGE=br-ex
-
-    NETWORK_GATEWAY=10.11.12.1
-    FIXED_RANGE=10.11.12.0/24
-    FIXED_NETWORK_SIZE=256
 
     ADMIN_PASSWORD=openstack
     MYSQL_PASSWORD=stackdb
@@ -97,10 +86,7 @@ local.conf is below.
     enable_service h-api-cw
 
     enable_plugin barbican https://git.openstack.org/openstack/barbican
-
-    #LOGFILE=$DEST/logs/devstack.log
-    DEST=/opt/stack
-    #SCREEN_LOGDIR=$DEST/logs/screen
+    enable_plugin neutron-lbaas https://git.openstack.org/openstack/neutron-lbaas
 
     [[post-config|/etc/neutron/dhcp_agent.ini]]
     [DEFAULT]
@@ -182,6 +168,9 @@ Change 192.168.11.197 to your devstack IP address.
 
     host = 0.0.0.0
 
+    [cinder_client]
+    region_name = RegionOne
+
     [trust]
     #trustee_domain_id = magnum
     #trustee_domain_admin_id = trustee_domain_admin
@@ -212,22 +201,22 @@ Update trust config
                                --description="Magnum Container Service" \
                                container
     $ openstack endpoint create --region=RegionOne \
-                                magnum public http://192.168.11.132:9511/v1
+                                container public http://192.168.11.132:9511/v1
     $ openstack endpoint create --region=RegionOne \
-                                magnum internal http://192.168.11.132:9511/v1
+                                container internal http://192.168.11.132:9511/v1
     $ openstack endpoint create --region=RegionOne \
-                                magnum admin http://192.168.11.132:9511/v1
+                                container admin http://192.168.11.132:9511/v1
 
 
 #### Register Image to glance
 
-    $ curl -O https://fedorapeople.org/groups/magnum/fedora-21-atomic-5.qcow2
+    $ curl -O http://tarballs.openstack.org/magnum/images/fedora-atomic-f23-dib.qcow2
     $ source ~/devstack/openrc admin admin
-    $ glance image-create --name fedora-21-atomic-5 \
+    $ glance image-create --name fedora-21-atomic-latest \
                         --visibility public \
                         --disk-format qcow2 \
                         --os-distro fedora-atomic \
-                        --container-format bare < fedora-21-atomic-5.qcow2
+                        --container-format bare < fedora-atomic-f23-dib.qcow2
 
 #### Add default keypair to demo user
 
@@ -276,7 +265,7 @@ and create tables.
 
     $ magnum baymodel-create --name kubernetes --keypair-id default \
                              --external-network-id public \
-                             --image-id fedora-21-atomic-5 \
+                             --image-id fedora-21-atomic-latest \
                              --flavor-id m1.small \
                              --docker-volume-size 1 \
                              --network-driver flannel \
@@ -285,7 +274,7 @@ and create tables.
     $ magnum bay-create --name k8s_bay --baymodel kubernetes
 
     $ magnum baymodel-create --name swarm \
-                             --image-id fedora-21-atomic-5 \
+                             --image-id fedora-21-atomic-latest \
                              --keypair-id default \
                              --external-network-id public \
                              --flavor-id m1.small \
