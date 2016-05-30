@@ -196,6 +196,7 @@ Update trust config
 
 #### register magnum service to keystone
 
+    $ IDENTITY_API_VERSION=3
     $ source ~/devstack/openrc admin admin
     $ openstack service create --name=magnum \
                                --description="Magnum Container Service" \
@@ -212,7 +213,7 @@ Update trust config
 
     $ curl -O http://tarballs.openstack.org/magnum/images/fedora-atomic-f23-dib.qcow2
     $ source ~/devstack/openrc admin admin
-    $ glance image-create --name fedora-21-atomic-latest \
+    $ glance image-create --name fedora-atomic-latest \
                         --visibility public \
                         --disk-format qcow2 \
                         --os-distro fedora-atomic \
@@ -265,20 +266,20 @@ and create tables.
 
     $ magnum baymodel-create --name kubernetes --keypair-id default \
                              --external-network-id public \
-                             --image-id fedora-21-atomic-latest \
+                             --image-id fedora-atomic-latest \
                              --flavor-id m1.small \
-                             --docker-volume-size 1 \
+                             --docker-volume-size 5 \
                              --network-driver flannel \
                              --coe kubernetes
 
     $ magnum bay-create --name k8s_bay --baymodel kubernetes
 
     $ magnum baymodel-create --name swarm \
-                             --image-id fedora-21-atomic-latest \
+                             --image-id fedora-atomic-latest \
                              --keypair-id default \
                              --external-network-id public \
                              --flavor-id m1.small \
-                             --docker-volume-size 1 \
+                             --docker-volume-size 5 \
                              --coe swarm
 
 ### Try to create pod
