@@ -10,7 +10,7 @@ if [ ! -f "$IMAGE_PATH" ]; then
        -o ${IMAGE_PATH}
 fi
 
-glance image-create --name fedora-21-atomic-latest \
+glance image-create --name fedora-atomic-latest \
                     --visibility public \
                     --disk-format qcow2 \
                     --os-distro fedora-atomic \
