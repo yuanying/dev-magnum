@@ -1,12 +1,12 @@
 #!/bin/bash
 source ~/devstack/openrc admin admin
 
-IMAGE_NAME=fedora-atomic-f23-dib.qcow2
+IMAGE_NAME=fedora-atomic-latest.qcow2
 IMAGE_PATH=~/${IMAGE_NAME}
 
 if [ ! -f "$IMAGE_PATH" ]; then
   echo "Download Image: ${IMAGE_NAME}"
-  curl http://tarballs.openstack.org/magnum/images/${IMAGE_NAME} \
+  curl https://fedorapeople.org/groups/magnum/${IMAGE_NAME} \
        -o ${IMAGE_PATH}
 fi
 
