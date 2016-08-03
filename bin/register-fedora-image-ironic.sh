@@ -27,13 +27,13 @@ KERNEL_ID=`glance image-create --name fedora-k8s-kernel \
                                --visibility public \
                                --disk-format=aki \
                                --container-format=aki \
-                               --file=~/${KERNEL_NAME} \
+                               < ~/${KERNEL_NAME} \
                                | grep id | tr -d '| ' | cut --bytes=3-57`
 RAMDISK_ID=`glance image-create --name fedora-k8s-ramdisk \
                                --visibility public \
                                --disk-format=ari \
                                --container-format=ari \
-                               --file=~/${RAMDISK_NAME} \
+                               < ~/${RAMDISK_NAME} \
                                | grep id |  tr -d '| ' | cut --bytes=3-57`
 
 BASE_ID=`glance image-create --name fedora-k8s \
@@ -43,6 +43,6 @@ BASE_ID=`glance image-create --name fedora-k8s \
                                --container-format=bare \
                                --property kernel_id=$KERNEL_ID \
                                --property ramdisk_id=$RAMDISK_ID \
-                               --file=${IMAGE_NAME} \
+                               < ~/${IMAGE_NAME} \
                                | grep -v kernel | grep -v ramdisk \
                                | grep id | tr -d '| ' | cut --bytes=3-57`
